@@ -1,0 +1,32 @@
+{
+  "check_time": "2026-03-26T06:57:57+00:00",
+  "operator": "add_float32_broadcast_case029",
+  "environment": {
+    "ascend_home_path": "",
+    "ascend_home_path_valid": false,
+    "cann_dir_exists": false,
+    "cann_version": "",
+    "arch_dir": "",
+    "aarch64_dir_exists": false,
+    "bisheng_path": "",
+    "bisheng_exists": false,
+    "bisheng_executable": ,
+    "kernel_operator_h": "",
+    "header_exists": false,
+    "libregister_so": "",
+    "libascendcl_so": "",
+    "all_libs_exist": false,
+    "asc_devkit_path": "asc-devkit",
+    "asc_devkit_exists": true,
+    "api_docs_exist": true,
+    "cmake_config_exists": true,
+    "examples_count": 327,
+    "npu_available": false,
+    "npu_device_count": 0
+  },
+  "validation": {
+    "all_passed": false,
+    "error_count": 7,
+    "warning_count": 1
+  }
+}
