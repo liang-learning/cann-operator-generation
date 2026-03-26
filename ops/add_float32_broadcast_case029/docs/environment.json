@@ -1,5 +1,5 @@
 {
-  "check_time": "2026-03-26T06:57:57+00:00",
+  "check_time": "2026-03-26T12:14:21+00:00",
   "operator": "add_float32_broadcast_case029",
   "environment": {
     "ascend_home_path": "",
@@ -10,7 +10,7 @@
     "aarch64_dir_exists": false,
     "bisheng_path": "",
     "bisheng_exists": false,
-    "bisheng_executable": ,
+    "bisheng_executable": false,
     "kernel_operator_h": "",
     "header_exists": false,
     "libregister_so": "",
