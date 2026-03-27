@@ -1,0 +1,16 @@
+{
+  "name": "agentic-generation-eval",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Evaluation harness for Ascend C agentic generation with opencode SDK.",
+  "scripts": {
+    "clean": "node -e \"const fs=require('fs'); for (const p of ['node_modules','.cache','agentic_run','history']) fs.rmSync(p,{recursive:true,force:true});\"",
+    "start": "node src/cli.js",
+    "eval": "node src/cli.js --config eval.config.json",
+    "test:sample": "node src/cli.js --config eval.config.json --cases-path ./prompt.txt --attempts 1"
+  },
+  "dependencies": {
+    "@opencode-ai/sdk": "^1.3.3"
+  }
+}

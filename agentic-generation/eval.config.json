@@ -1,0 +1,57 @@
+{
+  "casesPath": "./cases",
+  "attempts": 1,
+  "metricKs": [1],
+  "runDir": "./agentic_run",
+  "historyDir": "./history",
+  "cacheDir": "./.cache",
+  "opencode": {
+    "agent": null,
+    "systemPrompt": null,
+    "startupTimeoutSec": 60,
+    "promptTimeoutSec": 3600,
+    "stalledTimeoutSec": 120,
+    "exportSessionJson": true
+  },
+  "dependencies": {
+    "updateRepos": true,
+    "skillsRepoUrl": "https://gitcode.com/cann/skills.git",
+    "skillsRepoDir": "./.cache/cann-skills-src",
+    "ascDevkitRepoUrl": "https://gitcode.com/cann/asc-devkit.git",
+    "ascDevkitRepoDir": "./.cache/asc-devkit-src",
+    "selectedSkills": [
+      "ascendc-kernel-develop-workflow",
+      "ascendc-docs-search",
+      "ascendc-api-best-practices",
+      "ascendc-npu-arch",
+      "ascendc-precision-debug",
+      "ascendc-runtime-debug",
+      "ascendc-env-check",
+      "ascendc-task-focus"
+    ],
+    "selectedAgents": [
+      "ascendc-ops-architect",
+      "ascendc-ops-reviewer"
+    ],
+    "installAgents": true,
+    "installAscDevkit": true,
+    "useSymlinkForAscDevkit": true
+  },
+  "compileCheck": {
+    "enabled": true,
+    "command": null,
+    "cwd": "workspace",
+    "timeoutSec": 900,
+    "autoDetectCmake": true,
+    "buildDirName": ".eval-build"
+  },
+  "scoring": {
+    "passCriterion": "compile"
+  },
+  "history": {
+    "archiveCases": true
+  },
+  "runtime": {
+    "maxMessages": 2000
+  }
+}
