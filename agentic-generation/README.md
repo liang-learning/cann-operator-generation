@@ -125,6 +125,22 @@ npm run eval
 npm run test:sample
 ```
 
+如果你想手动进入目录，直接用 `opencode` 交互调试：
+
+```bash
+npm run bootstrap:manual
+cd agentic_run
+opencode .
+```
+
+说明：
+
+- `bootstrap:manual` 会准备好 `AGENTS.md`、`.opencode/skills`、`.opencode/agents` 和 `asc-devkit`
+- 最稳妥的启动目录是 `agentic_run/` 根目录
+- 这样启动时会直接加载我在评测工程里配置的那套 skills
+- 进入后你可以手动粘贴 prompt，观察真实执行效果
+- 如果想把手工实验和自动评测隔离，可以要求 agent 把文件写到 `manual_workspace/`
+
 手动指定路径和参数：
 
 ```bash

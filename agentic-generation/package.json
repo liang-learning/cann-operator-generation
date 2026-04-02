@@ -6,6 +6,7 @@
   "description": "Evaluation harness for Ascend C agentic generation with opencode SDK.",
   "scripts": {
     "clean": "node -e \"const fs=require('fs'); for (const p of ['node_modules','.cache','agentic_run','history']) fs.rmSync(p,{recursive:true,force:true});\"",
+    "bootstrap:manual": "node src/bootstrap-manual.js --config eval.config.json",
     "start": "node src/cli.js",
     "eval": "node src/cli.js --config eval.config.json",
     "test:sample": "node src/cli.js --config eval.config.json --cases-path ./prompt.txt --attempts 1"

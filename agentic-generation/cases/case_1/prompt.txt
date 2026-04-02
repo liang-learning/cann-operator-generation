@@ -1,0 +1,42 @@
+为昇腾Ascend平台编写一个Ascend C算子实现。
+
+
+算子名：Exp
+公式：y = e^((x * scale + shift) * ln(base))
+功能描述：计算输入张量的指数函数，支持自定义底数、缩放和偏移
+约束条件：输入任意维度，输出与输入相同shape
+数据类型支持：['float16', 'float32', 'bfloat16']
+属性约束：
+  - base: float 类型, 默认值: -1.0
+  - scale: float 类型, 默认值: 1.0
+  - shift: float 类型, 默认值: 0.0
+
+main函数命令行参数列表：
+- argv[1]: input1 输入数据文件路径 (shape=[11, 13, 7, 3, 29], dtype=float16)
+- argv[2]: output 输出数据文件路径 (shape=[11, 13, 7, 3, 29], dtype=['float16'])
+- argv[3]: base 属性值 (value: 2.0)
+- argv[4]: scale 属性值 (value: 1.0)
+- argv[5]: shift 属性值 (value: 0.0)
+
+数据文件格式：二进制格式，直接存储张量数据（无文件头）
+输入规格：
+- input1: shape=[11, 13, 7, 3, 29], dtype=float16
+
+输出规格：
+- output: shape=[11, 13, 7, 3, 29], dtype=float16
+
+属性：
+- base: 2.0
+- scale: 1.0
+- shift: 0.0
+
+
+**严格要求**：
+- 开发过程中请**自己决策方案，不要询问问题，subagent也需要遵循该要求**
+- 请在工作目录中保存完整可编译工程，其中代码要求是.asc和.h后缀，main函数在.asc文件中
+- 任务结束前工作目录中冗余的代码文件需要清理
+- main函数参数格式：int main(int argc, char* argv[])
+- 按参数列表说明从 argv 读取输入/输出文件路径和属性值，需要在当前源码实现数据读写逻辑
+- 输入输出文件：二进制格式读写，无文件头
+
+

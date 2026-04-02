@@ -141,6 +141,7 @@ export async function runCompileCheck({
       config,
       workspaceDir,
       attemptDir,
+      structure,
       logPath,
     })),
     toolchain,
@@ -202,12 +203,15 @@ async function runConfiguredCompileCommand({ config, workspaceDir, attemptDir, l
   };
 }
 
-async function runAutoDetectedCmakeBuild({ config, workspaceDir, attemptDir, logPath }) {
+async function runAutoDetectedCmakeBuild({ config, workspaceDir, attemptDir, structure, logPath }) {
   const buildDir = path.join(attemptDir, "compile", config.compileCheck.buildDirName);
   await ensureDir(buildDir);
+  const toolchainEnv = await inferAscendToolchainEnvironment();
+  const compileEnv = buildCompileEnv(toolchainEnv);
 
   const hasNinja = await hasCommand("ninja");
-  const configureArgs = ["-S", workspaceDir, "-B", buildDir];
+  const sourceDir = selectAutoDetectedCmakeSourceDir({ workspaceDir, structure });
+  const configureArgs = ["-S", sourceDir, "-B", buildDir];
   if (hasNinja) {
     configureArgs.push("-G", "Ninja");
   }
@@ -215,21 +219,23 @@ async function runAutoDetectedCmakeBuild({ config, workspaceDir, attemptDir, log
   const configure = await runProcess({
     command: "cmake",
     args: configureArgs,
-    cwd: workspaceDir,
+    cwd: sourceDir,
     timeoutMs: config.compileCheck.timeoutSec * 1000,
+    env: compileEnv,
   });
 
   const build = configure.code === 0
     ? await runProcess({
         command: "cmake",
         args: ["--build", buildDir, "--verbose"],
-        cwd: workspaceDir,
+        cwd: sourceDir,
         timeoutMs: config.compileCheck.timeoutSec * 1000,
+        env: compileEnv,
       })
     : null;
 
   const log = [
-    `cwd: ${workspaceDir}`,
+    `cwd: ${sourceDir}`,
     `configure: cmake ${configureArgs.join(" ")}`,
     "",
     "configure stdout:",
@@ -257,39 +263,240 @@ async function runAutoDetectedCmakeBuild({ config, workspaceDir, attemptDir, log
     status: passed ? "passed" : "failed",
     reason: passed ? "cmake_succeeded" : "cmake_failed",
     logPath,
-    command: `cmake -S ${workspaceDir} -B ${buildDir}${hasNinja ? " -G Ninja" : ""} && cmake --build ${buildDir} --verbose`,
+    command: `cmake -S ${sourceDir} -B ${buildDir}${hasNinja ? " -G Ninja" : ""} && cmake --build ${buildDir} --verbose`,
     exitCode: build?.code ?? configure.code,
     stdout: `${configure.stdout}\n${build?.stdout ?? ""}`.trim(),
     stderr: `${configure.stderr}\n${build?.stderr ?? ""}`.trim(),
   };
 }
 
-async function detectAscendToolchain() {
-  const candidates = [
-    process.env.ASCEND_HOME_PATH,
-    process.env.ASCENDC_CMAKE_PATH,
-    process.env.ASCENDC_DEVKIT_PATH,
-    "/usr/local/Ascend",
-    "/opt/miniconda3/Ascend",
-  ].filter(Boolean);
+function buildCompileEnv(toolchainEnv) {
+  const env = {};
+  const includePaths = [];
+  const libraryPaths = [];
 
-  const existingPaths = [];
-  for (const candidate of candidates) {
-    if (await pathExists(candidate)) {
-      existingPaths.push(candidate);
-    }
+  if (toolchainEnv.ASCEND_HOME_PATH) {
+    env.ASCEND_HOME_PATH = toolchainEnv.ASCEND_HOME_PATH;
+    includePaths.push(
+      path.join(toolchainEnv.ASCEND_HOME_PATH, "x86_64-linux", "include"),
+      path.join(toolchainEnv.ASCEND_HOME_PATH, "x86_64-linux", "asc", "include"),
+      path.join(toolchainEnv.ASCEND_HOME_PATH, "x86_64-linux", "ascendc", "include"),
+    );
+    libraryPaths.push(
+      path.join(toolchainEnv.ASCEND_HOME_PATH, "x86_64-linux", "lib64"),
+      path.join(toolchainEnv.ASCEND_HOME_PATH, "x86_64-linux", "lib64", "device", "lib64"),
+      path.join(toolchainEnv.ASCEND_HOME_PATH, "tools", "bisheng_compiler", "lib"),
+      path.join(toolchainEnv.ASCEND_HOME_PATH, "tools", "bisheng_compiler", "lib64"),
+      path.join(toolchainEnv.ASCEND_HOME_PATH, "x86_64-linux", "ccec_compiler", "lib64"),
+      path.join(toolchainEnv.ASCEND_HOME_PATH, "x86_64-linux", "lib64", "plugin", "asc"),
+    );
   }
+  if (toolchainEnv.ASCENDC_CMAKE_PATH) {
+    env.ASCENDC_CMAKE_PATH = toolchainEnv.ASCENDC_CMAKE_PATH;
+    env.ASC_DIR = toolchainEnv.ASCENDC_CMAKE_PATH;
+    env.CMAKE_PREFIX_PATH = [
+      toolchainEnv.ASCENDC_CMAKE_PATH,
+      process.env.CMAKE_PREFIX_PATH ?? "",
+    ]
+      .filter(Boolean)
+      .join(":");
+  }
+  if (toolchainEnv.ASCENDC_DEVKIT_PATH) {
+    env.ASCENDC_DEVKIT_PATH = toolchainEnv.ASCENDC_DEVKIT_PATH;
+  }
+  if (toolchainEnv.prependPath?.length) {
+    const existingPathEntries = new Set((process.env.PATH ?? "").split(":").filter(Boolean));
+    env.PATH = [
+      ...toolchainEnv.prependPath.filter((entry) => !existingPathEntries.has(entry)),
+      process.env.PATH ?? "",
+    ]
+      .filter(Boolean)
+      .join(":");
+  }
+
+  const resolvedIncludePaths = includePaths.filter(Boolean);
+  if (resolvedIncludePaths.length > 0) {
+    env.CPLUS_INCLUDE_PATH = [
+      ...resolvedIncludePaths,
+      process.env.CPLUS_INCLUDE_PATH ?? "",
+    ]
+      .filter(Boolean)
+      .join(":");
+    env.C_INCLUDE_PATH = [
+      ...resolvedIncludePaths,
+      process.env.C_INCLUDE_PATH ?? "",
+    ]
+      .filter(Boolean)
+      .join(":");
+  }
+
+  const resolvedLibraryPaths = libraryPaths.filter(Boolean);
+  if (resolvedLibraryPaths.length > 0) {
+    env.LD_LIBRARY_PATH = [
+      ...resolvedLibraryPaths,
+      process.env.LD_LIBRARY_PATH ?? "",
+    ]
+      .filter(Boolean)
+      .join(":");
+    env.LIBRARY_PATH = [
+      ...resolvedLibraryPaths,
+      process.env.LIBRARY_PATH ?? "",
+    ]
+      .filter(Boolean)
+      .join(":");
+  }
+  return env;
+}
+
+function selectAutoDetectedCmakeSourceDir({ workspaceDir, structure }) {
+  const candidateDirs = [...new Set(structure.cmakeFiles.map((filePath) => path.dirname(filePath)))];
+  if (candidateDirs.length <= 1) {
+    return candidateDirs[0] ?? workspaceDir;
+  }
+
+  const rankedCandidates = candidateDirs
+    .map((candidateDir) => ({
+      candidateDir,
+      score: {
+        mainExact: countDirectoryMatches(structure.mainSignatureFiles, candidateDir),
+        mainContained: countContainedMatches(structure.mainSignatureFiles, candidateDir),
+        ascExact: countDirectoryMatches(structure.ascFiles, candidateDir),
+        ascContained: countContainedMatches(structure.ascFiles, candidateDir),
+        headerExact: countDirectoryMatches(structure.headerFiles, candidateDir),
+        headerContained: countContainedMatches(structure.headerFiles, candidateDir),
+        depth: getDirectoryDepth(workspaceDir, candidateDir),
+      },
+    }))
+    .sort((left, right) => compareCandidateScores(right.score, left.score));
+
+  return rankedCandidates[0]?.candidateDir ?? workspaceDir;
+}
+
+function countDirectoryMatches(filePaths, candidateDir) {
+  return filePaths.filter((filePath) => path.dirname(filePath) === candidateDir).length;
+}
+
+function countContainedMatches(filePaths, candidateDir) {
+  return filePaths.filter((filePath) => isWithinDirectory(candidateDir, filePath)).length;
+}
+
+function isWithinDirectory(candidateDir, filePath) {
+  const relative = path.relative(candidateDir, filePath);
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+function getDirectoryDepth(rootDir, candidateDir) {
+  const relative = path.relative(rootDir, candidateDir);
+  if (!relative || relative === ".") {
+    return 0;
+  }
+  return relative.split(path.sep).length;
+}
+
+function compareCandidateScores(left, right) {
+  return (
+    left.mainExact - right.mainExact ||
+    left.mainContained - right.mainContained ||
+    left.ascExact - right.ascExact ||
+    left.ascContained - right.ascContained ||
+    left.headerExact - right.headerExact ||
+    left.headerContained - right.headerContained ||
+    left.depth - right.depth
+  );
+}
+
+async function detectAscendToolchain() {
+  const inferred = await inferAscendToolchainEnvironment();
+  const existingPaths = [
+    inferred.ASCEND_HOME_PATH,
+    inferred.ASCENDC_CMAKE_PATH,
+    inferred.ASCENDC_DEVKIT_PATH,
+    ...inferred.prependPath,
+  ].filter(Boolean);
 
   return {
     present: existingPaths.length > 0,
     details: {
       env: {
-        ASCEND_HOME_PATH: process.env.ASCEND_HOME_PATH ?? null,
-        ASCENDC_CMAKE_PATH: process.env.ASCENDC_CMAKE_PATH ?? null,
-        ASCENDC_DEVKIT_PATH: process.env.ASCENDC_DEVKIT_PATH ?? null,
+        ASCEND_HOME_PATH: inferred.ASCEND_HOME_PATH ?? null,
+        ASCENDC_CMAKE_PATH: inferred.ASCENDC_CMAKE_PATH ?? null,
+        ASCENDC_DEVKIT_PATH: inferred.ASCENDC_DEVKIT_PATH ?? null,
       },
       existingPaths,
     },
+  };
+}
+
+async function inferAscendToolchainEnvironment() {
+  const ascendHomeCandidates = [
+    process.env.ASCEND_HOME_PATH,
+    "/opt/miniconda/Ascend/cann-8.5.0",
+    "/opt/miniconda/Ascend/ascend-toolkit",
+    "/opt/miniconda3/Ascend/cann-8.5.0",
+    "/opt/miniconda3/Ascend/ascend-toolkit",
+    "/usr/local/Ascend/ascend-toolkit/latest",
+  ].filter(Boolean);
+
+  let ascendHomePath = null;
+  for (const candidate of ascendHomeCandidates) {
+    if (
+      await pathExists(path.join(candidate, "x86_64-linux")) ||
+      await pathExists(path.join(candidate, "aarch64-linux"))
+    ) {
+      ascendHomePath = candidate;
+      break;
+    }
+  }
+
+  const cmakeCandidates = ascendHomePath
+    ? [
+        path.join(ascendHomePath, "x86_64-linux", "tikcpp", "ascendc_kernel_cmake"),
+        path.join(ascendHomePath, "x86_64-linux", "lib64", "cmake"),
+        path.join(ascendHomePath, "aarch64-linux", "lib64", "cmake"),
+        path.join(ascendHomePath, "aarch64-linux", "tikcpp", "ascendc_kernel_cmake"),
+      ]
+    : [];
+
+  let ascendcCmakePath = null;
+  for (const candidate of cmakeCandidates) {
+    if (await pathExists(path.join(candidate, "ASCConfig.cmake"))) {
+      ascendcCmakePath = candidate;
+      break;
+    }
+  }
+
+  const devkitCandidates = [
+    process.env.ASCENDC_DEVKIT_PATH,
+    path.join(process.cwd(), "agentic_run", "asc-devkit"),
+    path.join(process.cwd(), "asc-devkit"),
+  ].filter(Boolean);
+
+  let ascendcDevkitPath = null;
+  for (const candidate of devkitCandidates) {
+    if (await pathExists(candidate)) {
+      ascendcDevkitPath = candidate;
+      break;
+    }
+  }
+
+  const prependPath = [];
+  if (ascendHomePath) {
+    for (const candidate of [
+      path.join(ascendHomePath, "x86_64-linux", "bin"),
+      path.join(ascendHomePath, "aarch64-linux", "bin"),
+      path.join(ascendHomePath, "tools", "bisheng_compiler", "bin"),
+    ]) {
+      if (await pathExists(candidate)) {
+        prependPath.push(candidate);
+      }
+    }
+  }
+
+  return {
+    ASCEND_HOME_PATH: ascendHomePath,
+    ASCENDC_CMAKE_PATH: ascendcCmakePath,
+    ASCENDC_DEVKIT_PATH: ascendcDevkitPath,
+    prependPath,
   };
 }
 

@@ -6,6 +6,10 @@
   "historyDir": "./history",
   "cacheDir": "./.cache",
   "opencode": {
+    "model": {
+      "providerID": "GPT",
+      "modelID": "gpt-5.4"
+    },
     "agent": null,
     "systemPrompt": null,
     "startupTimeoutSec": 60,

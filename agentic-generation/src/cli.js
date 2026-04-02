@@ -8,7 +8,21 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
 
   if (args.help) {
-    printHelp();
+    await writeStream(
+      process.stdout,
+      [
+        "Usage: node src/cli.js [options]",
+        "",
+        "Options:",
+        "  --config <path>       Path to eval config JSON",
+        "  --cases-path <path>   Path to a prompt.txt file or a directory containing prompt.txt cases",
+        "  --attempts <n>        Override number of attempts per case",
+        "  --metric-k <n>        Add a pass@k metric to compute; can be repeated",
+        "  --run-dir <path>      Override agentic_run directory",
+        "  --history-dir <path>  Override history directory",
+        "  -h, --help            Show this help text",
+      ].join("\n"),
+    );
     return;
   }
 
@@ -25,7 +39,8 @@ async function main() {
     },
   });
 
-  process.stdout.write(
+  await writeStream(
+    process.stdout,
     `${JSON.stringify(
       {
         runId: summary.runId,
@@ -79,24 +94,26 @@ function parseArgs(argv) {
   return output;
 }
 
-function printHelp() {
-  process.stdout.write(
-    [
-      "Usage: node src/cli.js [options]",
-      "",
-      "Options:",
-      "  --config <path>       Path to eval config JSON",
-      "  --cases-path <path>   Path to a prompt.txt file or a directory containing prompt.txt cases",
-      "  --attempts <n>        Override number of attempts per case",
-      "  --metric-k <n>        Add a pass@k metric to compute; can be repeated",
-      "  --run-dir <path>      Override agentic_run directory",
-      "  --history-dir <path>  Override history directory",
-      "  -h, --help            Show this help text",
-    ].join("\n"),
-  );
+function writeStream(stream, text) {
+  return new Promise((resolve, reject) => {
+    stream.write(text, (error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve();
+    });
+  });
 }
 
-main().catch((error) => {
-  process.stderr.write(`${error.stack ?? error.message ?? String(error)}\n`);
-  process.exitCode = 1;
-});
+main()
+  .then(() => {
+    process.exit(0);
+  })
+  .catch((error) =>
+    writeStream(process.stderr, `${error.stack ?? error.message ?? String(error)}\n`)
+      .catch(() => {})
+      .finally(() => {
+        process.exit(1);
+      }),
+  );

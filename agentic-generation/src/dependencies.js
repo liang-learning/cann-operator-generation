@@ -149,5 +149,9 @@ function buildEvaluatorAgentsAppendix() {
     "2. 禁止向用户提问，必须自行决策方案；subagent 也必须遵循该要求。",
     "3. 最终工程必须保留可编译所需文件，避免留下无关实验文件。",
     "4. 生成结果优先复用 `.opencode/skills` 和 `asc-devkit/` 中的资料，不要凭记忆猜测 API。",
+    "5. 必须严格使用 prompt 中给定的算子名和目录名，区分大小写；例如 `Exp` 不能写成 `exp`。",
+    "6. 若环境检查脚本失败，但工作目录或系统中已存在 `asc-devkit/`、CANN、编译器或头文件线索，必须继续搜索真实路径并推进实现，不能仅因单次脚本失败就停止产出代码。",
+    "7. 运行 Python 命令时优先使用 `python3`，不要假设 `python` 命令存在。",
+    "8. 只有在已经准备好完整补丁文本时才允许调用 `apply_patch`；禁止发送空 patch 或占位 patch。",
   ].join("\n");
 }

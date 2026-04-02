@@ -1,0 +1,34 @@
+为昇腾Ascend平台编写一个Ascend C算子实现。
+
+
+算子名：SwiGLU
+公式：y = x0 * (x0 * sigmoid(beta * x0)) * x1
+功能描述：采用Swish作为激活函数的GLU变体，输入在第-1维拆分成x0和x1两部分
+约束条件：单输入，在-1维拆分为两部分
+数据类型支持：['float16', 'float32']
+属性约束：
+  - scalarValue: float 类型, Swish激活函数的beta参数
+
+main函数命令行参数列表：
+- argv[1]: x 输入数据文件路径 (shape=[1025, 128], dtype=float16)
+- argv[2]: y 输出数据文件路径 (shape=[1025, 64], dtype=['float16'])
+- argv[3]: dim 属性值 (value: -1.0)
+
+数据文件格式：二进制格式，直接存储张量数据（无文件头）
+输入规格：
+- x: shape=[1025, 128], dtype=float16
+
+输出规格：
+- y: shape=[1025, 64], dtype=float16
+
+属性：
+- dim: -1.0
+
+
+**严格要求**：
+- 开发过程中请**自己决策方案，不要询问问题，subagent也需要遵循该要求**
+- 请在工作目录中保存完整可编译工程，其中代码要求是.asc和.h后缀，main函数在.asc文件中
+- 任务结束前工作目录中冗余的代码文件需要清理
+- main函数参数格式：int main(int argc, char* argv[])
+- 按参数列表说明从 argv 读取输入/输出文件路径和属性值，需要在当前源码实现数据读写逻辑
+- 输入输出文件：二进制格式读写，无文件头

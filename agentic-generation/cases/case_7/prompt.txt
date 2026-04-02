@@ -1,0 +1,34 @@
+为昇腾Ascend平台编写一个Ascend C算子实现。
+
+
+算子名：Cummin
+公式：y[i] = min(x[0], x[1], ..., x[i]) 沿指定轴
+功能描述：计算输入张量中的累积最小值
+约束条件：输入输出shape相同
+数据类型支持：['float16', 'float32', 'int8', 'int32', 'uint8', 'bfloat16']
+属性约束：
+  - axis: int64 类型
+
+main函数命令行参数列表：
+- argv[1]: input1 输入数据文件路径 (shape=[32768, 4096], dtype=float16)
+- argv[2]: output 输出数据文件路径 (shape=[32768, 4096], dtype=['float16'])
+- argv[3]: axis 属性值 (value: -1.0)
+
+数据文件格式：二进制格式，直接存储张量数据（无文件头）
+输入规格：
+- input1: shape=[32768, 4096], dtype=float16
+
+输出规格：
+- output: shape=[32768, 4096], dtype=float16
+
+属性：
+- axis: -1.0
+
+
+**严格要求**：
+- 开发过程中请**自己决策方案，不要询问问题，subagent也需要遵循该要求**
+- 请在工作目录中保存完整可编译工程，其中代码要求是.asc和.h后缀，main函数在.asc文件中
+- 任务结束前工作目录中冗余的代码文件需要清理
+- main函数参数格式：int main(int argc, char* argv[])
+- 按参数列表说明从 argv 读取输入/输出文件路径和属性值，需要在当前源码实现数据读写逻辑
+- 输入输出文件：二进制格式读写，无文件头
